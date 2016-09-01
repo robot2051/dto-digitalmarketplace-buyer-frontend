@@ -1,7 +1,6 @@
 # Some handy methods that can be reused in other stuff
 import math
 from threading import Thread
-from flask.ctx import copy_current_request_context
 
 
 def get_page_list(page_size, result_size, current_page):

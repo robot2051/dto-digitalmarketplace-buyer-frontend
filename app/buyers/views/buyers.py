@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals
 from dmutils.email import send_email, EmailError, hash_email
-from flask.ctx import copy_current_request_context
 from flask.globals import current_app
 import six
 import unicodecsv
