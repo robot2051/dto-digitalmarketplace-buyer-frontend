@@ -1,5 +1,7 @@
 # Some handy methods that can be reused in other stuff
 import math
+from threading import Thread
+from flask.ctx import copy_current_request_context
 
 
 def get_page_list(page_size, result_size, current_page):
@@ -31,3 +33,20 @@ def get_page_list(page_size, result_size, current_page):
         pages.append(last_page)  # last page
 
     return pages
+
+
+def run_async(func):
+    """
+    function decorator, intended to make "func" run in a separate
+    thread (asynchronously).
+    Returns the created Thread object
+
+    Example-
+    @run_async
+    def task1():
+        do_something
+    """
+    def wrapper(*args, **kwargs):
+        thread = Thread(target=func, args=args, kwargs=kwargs)
+        thread.start()
+    return wrapper

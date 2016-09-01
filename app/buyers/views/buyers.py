@@ -1,11 +1,12 @@
 # coding: utf-8
 from __future__ import unicode_literals
 from dmutils.email import send_email, EmailError, hash_email
+from flask.ctx import copy_current_request_context
 from flask.globals import current_app
 import six
 import unicodecsv
 
-from flask import abort, render_template, request, redirect, url_for, flash, Response
+from flask import abort, render_template, request, redirect, url_for, flash, Response, Flask
 from flask_login import current_user
 
 from app import data_api_client
@@ -20,6 +21,7 @@ from dmutils.forms import render_template_with_csrf, check_csrf, valid_csrf_or_a
 
 from dmapiclient import HTTPError
 from dmutils.dates import get_publishing_dates
+from app.main.utils import run_async
 
 
 @buyers.route('/buyers')
@@ -543,18 +545,29 @@ def send_new_opportunity_email_to_sellers(brief_json, brief_url):
             brief_url=brief_url
         )
 
-        try:
-            send_email(
-                to_email_addresses,
-                email_body,
-                current_app.config['SELLER_NEW_OPPORTUNITY_EMAIL_SUBJECT'],
-                current_app.config['DM_GENERIC_NOREPLY_EMAIL'],
-                current_app.config['DM_GENERIC_SUPPORT_NAME'],
-            )
-        except EmailError as e:
-            current_app.logger.error(
-                'seller new opportunity email failed to send. '
-                'error {error}',
-                extra={
-                    'error': six.text_type(e), })
-            abort(503, response='Failed to send seller new opportunity email.')
+        email_subject = current_app.config['SELLER_NEW_OPPORTUNITY_EMAIL_SUBJECT']
+        email_noreply = current_app.config['DM_GENERIC_NOREPLY_EMAIL']
+        email_name = current_app.config['DM_GENERIC_SUPPORT_NAME'],
+
+        send_async_email(Flask(__name__), email_subject, email_name, to_email_addresses, email_noreply, email_body,
+                         current_app.logger.error)
+
+
+@run_async
+def send_async_email(app, email_subject, email_name, to_email_addresses, email_noreply, email_body, error_logger):
+    with app.app_context():
+        for email_address in to_email_addresses:  # Send emails individually rather than sending to a list of emails
+            try:
+                send_email(
+                    [email_address],
+                    email_body,
+                    email_subject,
+                    email_noreply,
+                    email_name,
+                )
+            except EmailError as e:
+                error_logger(
+                    'seller new opportunity email failed to send. '
+                    'error {error}',
+                    extra={
+                        'error': six.text_type(e), })
